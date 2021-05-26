@@ -1,0 +1,71 @@
+﻿#define WIN32_LEAN_AND_MEAN
+
+#include<Windows.h>
+#include<winsock2.h>
+#include<stdio.h>
+#pragma comment (lib,"ws2_32.lib")
+
+int main() {
+	WORD ver = MAKEWORD(2, 2);
+	WSADATA dat;
+	WSAStartup(ver, &dat);//启动window socket 2.x环境
+
+	//用socket API建立简易TCP客户端
+	//1、建立一个socket
+	SOCKET _sock=socket(AF_INET, SOCK_STREAM, 0);//0自动选择默认协议
+	if (INVALID_SOCKET == _sock) {
+		printf("错误，建立socket失败！\n");
+	}
+	else {
+		printf("建立socket成功！\n");
+	}
+
+	//2、连接服务器 connect
+	sockaddr_in _sin = {};
+	_sin.sin_family = AF_INET;
+	_sin.sin_port = htons(4567);
+	_sin.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
+	int ret=connect(_sock, (sockaddr*)&_sin, sizeof(sockaddr_in));
+	if (SOCKET_ERROR == ret) {
+		printf("连接服务器失败！\n");
+	}
+	else {
+		printf("连接服务器成功！\n");
+	}
+
+
+	char cmdBuf[128] = {};
+	while (true) {
+		//3、输入请求命令
+		scanf("%s", cmdBuf);
+		//4、处理请求命令
+		if (0 == strcmp(cmdBuf, "exit")) {
+			printf("收到退出命令，任务结束！\n");
+			break;
+		}
+		else {
+			//5、向服务端发送请求命令
+			send(_sock,cmdBuf,strlen(cmdBuf)+1,0);
+		}
+		//6、接收服务器发送的信息 recv
+	    //接收数据缓冲区
+		char recvBuf[128] = {};
+
+		int nlen = recv(_sock, recvBuf, sizeof(recvBuf), 0);
+		if (nlen > 0) {
+			printf("接收到数据：%s\n", recvBuf);
+		}
+
+	}
+	
+	
+	//7、关闭套接字 closesocket
+	closesocket(_sock);
+	
+	//清除 Windows socket网络环境
+	WSACleanup();
+	printf("客户端退出，任务结束！\n");
+	getchar();
+	return 0;
+	
+}
