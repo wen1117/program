@@ -12,22 +12,42 @@ struct DataHead {
 enum CMD {//枚举
 	CMD_LOGIN,
 	CMD_LOGOUT,
+	CMD_LOGIN_RES,
+	CMD_LOGOUT_RES,
 	CMD_ERROR
 };
 
 //DataPackage
-struct Login {
+struct Login :public DataHead {
+	Login() {
+		dataLength = sizeof(Login);
+		cmd = CMD_LOGIN;
+	}
 	char userName[32];
 	char passWord[32];
 };
-struct LoginRes {
+struct LoginRes :public DataHead {
+	LoginRes() {
+		dataLength = sizeof(LoginRes);
+		cmd = CMD_LOGIN_RES;
+		result = 0;
+	}
 	int result;
 
 };
-struct Logout {
+struct Logout :public DataHead {
+	Logout() {
+		dataLength = sizeof(Logout);
+		cmd = CMD_LOGOUT;
+	}
 	char userName[32];
 };
-struct LogoutRes {
+struct LogoutRes :public DataHead {
+	LogoutRes() {
+		dataLength = sizeof(LogoutRes);
+		cmd = CMD_LOGOUT_RES;
+		result = 0;
+	}
 	int result;
 
 };
@@ -73,26 +93,22 @@ int main() {
 		else if (0 == strcmp(cmdBuf, "login")) {
 			//5、向服务端发送请求命令
 			DataHead shead = { sizeof(Login),CMD_LOGIN};
-			Login login = { "ren wen","123456" };
-			send(_sock, (const char*)&shead, sizeof(DataHead), 0);
+			Login login;
+			strcpy(login.userName, "rw");//字符串拷贝
+			strcpy(login.passWord, "rwmima");
 			send(_sock, (const char*)&login, sizeof(Login), 0);
 			//6、接收服务器发送的信息 recv
-			DataHead rhead = {};
 			LoginRes loginres = {};
-			recv(_sock, (char*)&rhead, sizeof(DataHead), 0);
 			recv(_sock, (char*)&loginres, sizeof(LoginRes), 0);
 			printf("登录结果：%d\n", loginres.result);
 		}
 		else if (0 == strcmp(cmdBuf, "logout")) {
 			//5、向服务端发送请求命令
-			DataHead shead = { sizeof(Logout),CMD_LOGOUT };
-			Logout logout = { "ren wen" };
-			send(_sock, (const char*)&shead, sizeof(DataHead), 0);
+			Logout logout;
+			strcpy(logout.userName, "rw");
 			send(_sock, (const char*)&logout, sizeof(Logout), 0);
 			//6、接收服务器发送的信息 recv
-			DataHead rhead = {};
 			LogoutRes logoutres = {};
-			recv(_sock, (char*)&rhead, sizeof(DataHead), 0);
 			recv(_sock, (char*)&logoutres, sizeof(LogoutRes), 0);
 			printf("登出结果：%d\n", logoutres.result);
 		}
