@@ -5,6 +5,33 @@
 #include<stdio.h>
 #pragma comment (lib,"ws2_32.lib")
 
+struct DataHead {
+	short dataLength;//数据长度
+	short cmd;//命令
+};
+enum CMD {//枚举
+	CMD_LOGIN,
+	CMD_LOGOUT,
+	CMD_ERROR
+};
+
+//DataPackage
+struct Login {
+	char userName[32];
+	char passWord[32];
+};
+struct LoginRes {
+	int result;
+
+};
+struct Logout {
+	char userName[32];
+};
+struct LogoutRes {
+	int result;
+
+};
+
 int main() {
 	WORD ver = MAKEWORD(2, 2);
 	WSADATA dat;
@@ -43,17 +70,35 @@ int main() {
 			printf("收到退出命令，任务结束！\n");
 			break;
 		}
-		else {
+		else if (0 == strcmp(cmdBuf, "login")) {
 			//5、向服务端发送请求命令
-			send(_sock,cmdBuf,strlen(cmdBuf)+1,0);
+			DataHead shead = { sizeof(Login),CMD_LOGIN};
+			Login login = { "ren wen","123456" };
+			send(_sock, (const char*)&shead, sizeof(DataHead), 0);
+			send(_sock, (const char*)&login, sizeof(Login), 0);
+			//6、接收服务器发送的信息 recv
+			DataHead rhead = {};
+			LoginRes loginres = {};
+			recv(_sock, (char*)&rhead, sizeof(DataHead), 0);
+			recv(_sock, (char*)&loginres, sizeof(LoginRes), 0);
+			printf("登录结果：%d\n", loginres.result);
 		}
-		//6、接收服务器发送的信息 recv
-	    //接收数据缓冲区
-		char recvBuf[128] = {};
-
-		int nlen = recv(_sock, recvBuf, sizeof(recvBuf), 0);
-		if (nlen > 0) {
-			printf("接收到数据：%s\n", recvBuf);
+		else if (0 == strcmp(cmdBuf, "logout")) {
+			//5、向服务端发送请求命令
+			DataHead shead = { sizeof(Logout),CMD_LOGOUT };
+			Logout logout = { "ren wen" };
+			send(_sock, (const char*)&shead, sizeof(DataHead), 0);
+			send(_sock, (const char*)&logout, sizeof(Logout), 0);
+			//6、接收服务器发送的信息 recv
+			DataHead rhead = {};
+			LogoutRes logoutres = {};
+			recv(_sock, (char*)&rhead, sizeof(DataHead), 0);
+			recv(_sock, (char*)&logoutres, sizeof(LogoutRes), 0);
+			printf("登出结果：%d\n", logoutres.result);
+		}
+		else {
+			printf("不支持该命令,请重新输入！\n");
+			
 		}
 
 	}
