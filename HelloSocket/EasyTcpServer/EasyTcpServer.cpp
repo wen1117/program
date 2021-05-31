@@ -13,22 +13,42 @@ struct DataHead {
 enum CMD {//枚举
 	CMD_LOGIN,
 	CMD_LOGOUT,
+	CMD_LOGIN_RES,
+	CMD_LOGOUT_RES,
 	CMD_ERROR
 };
 
 //DataPackage
-struct Login {
+struct Login :public DataHead {
+	Login() {
+		dataLength = sizeof(Login);
+		cmd = CMD_LOGIN;
+	}
 	char userName[32];
 	char passWord[32];
 };
-struct LoginRes {
+struct LoginRes :public DataHead {
+	LoginRes() {
+		dataLength = sizeof(LoginRes);
+		cmd = CMD_LOGIN_RES;
+		result = 0;
+	}
 	int result;
 	
 };
-struct Logout {
+struct Logout :public DataHead {
+	Logout() {
+		dataLength = sizeof(Logout);
+		cmd = CMD_LOGOUT;
+	}
 	char userName[32];
 };
-struct LogoutRes {
+struct LogoutRes :public DataHead {
+	LogoutRes() {
+		dataLength = sizeof(LogoutRes);
+		cmd = CMD_LOGOUT_RES;
+		result = 0;
+	}
 	int result;
 
 };
@@ -96,29 +116,30 @@ int main() {
 			break;
 		}
 		//6、处理请求		
-		printf("收到命令：%d  数据长度：%d\n", head.cmd ,head.dataLength);
 		switch (head.cmd)
 		{
 		case CMD_LOGIN: {
 			Login login = {};
-			recv(_cSock, (char*)&login, sizeof(Login), 0);
+			recv(_cSock, (char*)&login+sizeof(DataHead), sizeof(Login)- sizeof(DataHead), 0);
+			printf("收到命令：CMD_LOGIN  数据长度：%d  uesrname：%s password：%s\n", login.dataLength,login.userName,login.passWord);
+
 			//忽略判断用户名密码是否正确的过程
 
-			LoginRes loginres = {0};
-			//返回数据 先发送包头 再发包体
-			send(_cSock, (char*)&head, sizeof(DataHead), 0);
+			LoginRes loginres;
+			//返回数据 发送数据包
 			send(_cSock, (char*)&loginres, sizeof(LoginRes), 0);
 
 			break;
 		}
 		case CMD_LOGOUT: {
 			Logout logout = {};
-			recv(_cSock, (char*)&logout, sizeof(Logout), 0);
+			recv(_cSock, (char*)&logout + sizeof(DataHead), sizeof(Logout)-sizeof(DataHead), 0);
+			printf("收到命令：CMD_LOGOUT  数据长度：%d  uesrname：%s \n", logout.dataLength, logout.userName);
+
 			//忽略判断用户名密码是否正确的过程
 
-			LogoutRes logoutres = { 1 };
-			//返回数据 先发送包头 再发包体
-			send(_cSock, (char*)&head, sizeof(DataHead), 0);
+			LogoutRes logoutres ;
+			//返回数据 发送数据包
 			send(_cSock, (char*)&logoutres, sizeof(LogoutRes), 0);
 
 			break; 
@@ -139,5 +160,6 @@ int main() {
 	//清除windows socket环境
 	WSACleanup();
 	printf("服务器退出！\n");
+	getchar();//实现的功能，暂停
 	return 0;
 }
