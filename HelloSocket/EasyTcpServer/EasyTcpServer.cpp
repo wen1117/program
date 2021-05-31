@@ -94,8 +94,7 @@ int main() {
 	int nAddrLen = sizeof(clientAddr);
 	//客户端
 	SOCKET _cSock = INVALID_SOCKET;
-	//发送的内容
-	//char msgBuf[] = "";
+	
 
 	_cSock = accept(_sock, (sockaddr*)&clientAddr, &nAddrLen);
 	if (INVALID_SOCKET == _cSock)
@@ -104,24 +103,26 @@ int main() {
 	}
 	printf("新客户端加入：socket=%d,IP= %s \n",(int)_cSock, inet_ntoa(clientAddr.sin_addr));
 	
-	//缓冲区
-	//char _recvBuf[128] = {};
-
+	
+	
 	while (true)
-	{	//5、接收客户端的请求数据
-		DataHead head = {};
-		int nlen=recv(_cSock, (char*)&head, sizeof(DataHead), 0);
+	{	//缓冲区
+		char szRecv[1024] = {};
+		//5、接收客户端的请求数据
+		int nlen=recv(_cSock, szRecv, sizeof(DataHead), 0);
+		DataHead* head = (DataHead*)szRecv;
 		if (nlen <= 0) {
 			printf("客户端已退出,任务结束！\n");
 			break;
 		}
+		
 		//6、处理请求		
-		switch (head.cmd)
+		switch (head->cmd)
 		{
 		case CMD_LOGIN: {
-			Login login = {};
-			recv(_cSock, (char*)&login+sizeof(DataHead), sizeof(Login)- sizeof(DataHead), 0);
-			printf("收到命令：CMD_LOGIN  数据长度：%d  uesrname：%s password：%s\n", login.dataLength,login.userName,login.passWord);
+			recv(_cSock, szRecv +sizeof(DataHead), head->dataLength-sizeof(DataHead), 0);
+			Login* login=(Login*) szRecv;
+			printf("收到命令：CMD_LOGIN  数据长度：%d  uesrname：%s password：%s\n", login->dataLength,login->userName,login->passWord);
 
 			//忽略判断用户名密码是否正确的过程
 
@@ -132,9 +133,9 @@ int main() {
 			break;
 		}
 		case CMD_LOGOUT: {
-			Logout logout = {};
-			recv(_cSock, (char*)&logout + sizeof(DataHead), sizeof(Logout)-sizeof(DataHead), 0);
-			printf("收到命令：CMD_LOGOUT  数据长度：%d  uesrname：%s \n", logout.dataLength, logout.userName);
+			recv(_cSock, szRecv + sizeof(DataHead), head->dataLength-sizeof(DataHead), 0);
+			Logout* logout=(Logout*)szRecv;
+			printf("收到命令：CMD_LOGOUT  数据长度：%d  uesrname：%s \n", logout->dataLength, logout->userName);
 
 			//忽略判断用户名密码是否正确的过程
 
@@ -145,8 +146,9 @@ int main() {
 			break; 
 		}
 		default: {
-			head.cmd = CMD_ERROR;
-			head.dataLength = 0;//??
+			DataHead header;
+			header.cmd = CMD_ERROR;
+			header.dataLength = 0;
 			send(_cSock, (char*)&head, sizeof(DataHead), 0);
 			break;
 		}	
