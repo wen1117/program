@@ -6,6 +6,32 @@
 #include<stdio.h>
 #pragma comment (lib,"ws2_32.lib")
 
+struct DataHead {
+	short dataLength;//数据长度
+	short cmd;//命令
+};
+enum CMD {//枚举
+	CMD_LOGIN,
+	CMD_LOGOUT,
+	CMD_ERROR
+};
+
+//DataPackage
+struct Login {
+	char userName[32];
+	char passWord[32];
+};
+struct LoginRes {
+	int result;
+	
+};
+struct Logout {
+	char userName[32];
+};
+struct LogoutRes {
+	int result;
+
+};
 
 
 int main() {
@@ -59,31 +85,51 @@ int main() {
 	printf("新客户端加入：socket=%d,IP= %s \n",(int)_cSock, inet_ntoa(clientAddr.sin_addr));
 	
 	//缓冲区
-	char _recvBuf[128] = {};
+	//char _recvBuf[128] = {};
+
 	while (true)
 	{	//5、接收客户端的请求数据
-		int nlen=recv(_cSock, _recvBuf, sizeof(_recvBuf), 0);
+		DataHead head = {};
+		int nlen=recv(_cSock, (char*)&head, sizeof(DataHead), 0);
 		if (nlen <= 0) {
 			printf("客户端已退出,任务结束！\n");
 			break;
 		}
 		//6、处理请求		
-		printf("收到命令：%s\n", _recvBuf);
-		if (0 == strcmp(_recvBuf, "getName"))
+		printf("收到命令：%d  数据长度：%d\n", head.cmd ,head.dataLength);
+		switch (head.cmd)
 		{
-			char msgBuf[] = "Name: Wen Ren";
-			send(_cSock, msgBuf, strlen(msgBuf) + 1, 0);
+		case CMD_LOGIN: {
+			Login login = {};
+			recv(_cSock, (char*)&login, sizeof(Login), 0);
+			//忽略判断用户名密码是否正确的过程
+
+			LoginRes loginres = {0};
+			//返回数据 先发送包头 再发包体
+			send(_cSock, (char*)&head, sizeof(DataHead), 0);
+			send(_cSock, (char*)&loginres, sizeof(LoginRes), 0);
+
+			break;
 		}
-		
-		else if (0 == strcmp(_recvBuf, "getAge")) {
-			char msgBuf[] = "Age: 18";
-			send(_cSock, msgBuf, strlen(msgBuf) + 1, 0);
+		case CMD_LOGOUT: {
+			Logout logout = {};
+			recv(_cSock, (char*)&logout, sizeof(Logout), 0);
+			//忽略判断用户名密码是否正确的过程
+
+			LogoutRes logoutres = { 1 };
+			//返回数据 先发送包头 再发包体
+			send(_cSock, (char*)&head, sizeof(DataHead), 0);
+			send(_cSock, (char*)&logoutres, sizeof(LogoutRes), 0);
+
+			break; 
 		}
-		else {
-			char msgBuf[] = "?????";
-			send(_cSock, msgBuf, strlen(msgBuf) + 1, 0);
-		}
-		
+		default: {
+			head.cmd = CMD_ERROR;
+			head.dataLength = 0;//??
+			send(_cSock, (char*)&head, sizeof(DataHead), 0);
+			break;
+		}	
+		}	
 		
 	}
 	
