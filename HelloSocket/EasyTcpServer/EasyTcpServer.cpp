@@ -13,7 +13,8 @@ enum CMD {//枚举
 	CMD_LOGOUT,
 	CMD_LOGIN_RES,
 	CMD_LOGOUT_RES,
-	CMD_ERROR
+	CMD_ERROR,
+	CMD_NEW_USER_JION
 };
 struct DataHead {
 	short dataLength;//数据长度
@@ -54,13 +55,23 @@ struct LogoutRes :public DataHead {
 	int result;
 
 };
+
+struct NewUserJoin :public DataHead {
+	NewUserJoin() {
+		dataLength = sizeof(NewUserJoin);
+		cmd = CMD_NEW_USER_JION;
+		csocket = 0;
+	}
+	int csocket;
+};
+
 //加入的客户端，用一个全局动态数组存储
 std::vector<SOCKET> g_clients;
 
 //处理请求，封装
 int processor(SOCKET _cSock) {
 	//缓冲区
-	char szRecv[1024] = {};
+	char szRecv[4096] = {};
 	//5、接收客户端的请求数据
 	int nlen = recv(_cSock, szRecv, sizeof(DataHead), 0);
 	DataHead* head = (DataHead*)szRecv;
@@ -192,6 +203,13 @@ int main() {
 				printf("错误，接收到无效客户端socket!\n");
 			}
 			printf("新客户端加入：socket=%d,IP= %s \n", (int)_cSock, inet_ntoa(clientAddr.sin_addr));
+			
+			//有新客户端加入时，向其他客户端发送消息通知
+			for (int n = (int)g_clients.size() - 1; n >= 0; n--) {
+				NewUserJoin nuj;
+				send(g_clients[n], (const char *)&nuj, sizeof(NewUserJoin), 0);
+			}
+			
 			//将新加入的客户端存起来 利用动态数组
 			g_clients.push_back(_cSock);
 		}
