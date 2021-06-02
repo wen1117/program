@@ -1,11 +1,21 @@
-﻿#define WIN32_LEAN_AND_MEAN
-#define _WINSOCK_DEPRECATED_NO_WARNINGS 
+﻿#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+#include<windows.h>
+#include<WinSock2.h>
+#pragma comment(lib,"ws2_32.lib")
+#else
+#include<unistd.h> //uni std
+#include<arpa/inet.h>
+#include<string.h>
 
-#include<Windows.h>
-#include<winsock2.h>
+#define SOCKET int
+#define INVALID_SOCKET  (SOCKET)(~0)
+#define SOCKET_ERROR            (-1)
+#endif
+
 #include<stdio.h>
-#pragma comment (lib,"ws2_32.lib")
-
+#include<thread>
 #include<vector>
 
 enum CMD {//枚举
@@ -116,13 +126,17 @@ int processor(SOCKET _cSock) {
 		break;
 	}
     }
+	return 0;
 }
 
 int main() {
+#ifdef _WIN32
 	WORD ver = MAKEWORD(2, 2);
 	WSADATA dat;
 	WSAStartup(ver, &dat);//启动window socket 2.x环境
 
+#endif // _WIN_32
+	
 	//用socket API建立简易TCP服务端
 	
 	// 1、建立一个socket套接字
@@ -135,8 +149,13 @@ int main() {
 	// host主机 to net unsigned short
 	_sin.sin_port =htons(4567);
 	//绑定主机的IP地址
+#ifdef _WIN32
 	_sin.sin_addr.S_un.S_addr = INADDR_ANY;//任意ip地址
-		//inet_addr("127.0.0.1");内网
+	//内网("127.0.0.1");
+#else
+	_sin.sin_addr.s_addr = INADDR_ANY;
+#endif
+
 	if (SOCKET_ERROR == bind(_sock, (sockaddr*)&_sin, sizeof(_sin))) {
 		printf("ERROR!绑定用于接收客户端的网络端口失败!\n");
 	}
@@ -162,21 +181,26 @@ int main() {
 		FD_ZERO(&fdWrite);
 		FD_ZERO(&fdExp);
 
-		FD_SET(_sock, &fdRead);//将服务端放入集合
+		FD_SET(_sock, &fdRead);//将描述符放入集合
 		FD_SET(_sock, &fdWrite);
 		FD_SET(_sock, &fdExp);
 
+		SOCKET maxSock = _sock;
+
 		for (int n = (int)g_clients.size() - 1; n >= 0; n--) {//倒序快一点，只用调用一次size
 				FD_SET(g_clients[n], &fdRead);//将客户端放入可读集合，之后进行查询是否有操作
-			}
+				if (maxSock < g_clients[n])
+				{
+					maxSock = g_clients[n];
+				}
+		}
 
 		//nfds 第一个参数是一个整数值，是指fd_set集合中所有描述符（socket）的范围，而不是数量，即是所有描述符最大值+1
 		//在windows下第一个参数无意义,可以写0
 		//最后一个参数用于描述一段时间长度，如果在这个时间内，需要监视的描述符没有事件发生则函数返回，返回值为0，null为阻塞模式(select将一直被阻塞，直到某个文件描述符上发生了事件)，
 		
 		timeval t = { 1,0 };//设置等待时间为0，如果没有命令，立即返回
-		//int ret=select(_sock + 1, &fdRead, &fdWrite, &fdExp, NULL);
-		int ret = select(_sock + 1, &fdRead, &fdWrite, &fdExp, &t);
+		int ret = select(maxSock + 1, &fdRead, &fdWrite, &fdExp, &t);
 
 		//如果出错，直接退出循环
 		if (ret < 0) {
@@ -184,10 +208,9 @@ int main() {
 			break;
 		}
 		
-		//判断一下有没有可读的socket
+		//判断一下有没有可读的socket，判断描述符是否在集合中
 		if (FD_ISSET(_sock, &fdRead)) {
 			FD_CLR(_sock, &fdRead);//用于在文件描述符集合中删除一个文件描述符,只清除count
-
 
 			//4、等待接受客户端连接 accept
 			//客户端地址
@@ -195,49 +218,61 @@ int main() {
 			int nAddrLen = sizeof(clientAddr);
 			//客户端
 			SOCKET _cSock = INVALID_SOCKET;
-
-
+#ifdef _WIN32
 			_cSock = accept(_sock, (sockaddr*)&clientAddr, &nAddrLen);
+#else
+			_cSock = accept(_sock, (sockaddr*)&clientAddr, (socklen_t*)&nAddrLen);
+#endif
 			if (INVALID_SOCKET == _cSock)
 			{
 				printf("错误，接收到无效客户端socket!\n");
 			}
-			printf("新客户端加入：socket=%d,IP= %s \n", (int)_cSock, inet_ntoa(clientAddr.sin_addr));
-			
-			//有新客户端加入时，向其他客户端发送消息通知
-			for (int n = (int)g_clients.size() - 1; n >= 0; n--) {
-				NewUserJoin nuj;
-				send(g_clients[n], (const char *)&nuj, sizeof(NewUserJoin), 0);
-			}
-			
-			//将新加入的客户端存起来 利用动态数组
-			g_clients.push_back(_cSock);
+			else {
+				printf("新客户端加入：socket=%d,IP= %s \n", (int)_cSock, inet_ntoa(clientAddr.sin_addr));
+				//有新客户端加入时，向其他客户端发送消息通知
+				for (int n = (int)g_clients.size() - 1; n >= 0; n--) {
+					NewUserJoin nuj;
+					send(g_clients[n], (const char*)&nuj, sizeof(NewUserJoin), 0);
+				}
+				//将新加入的客户端存起来 利用动态数组
+				g_clients.push_back(_cSock);
+			}	
 		}
 		//循环处理客户端请求
-		for (size_t n = 0; n <fdRead.fd_count; n++) {
-			if (-1 == processor(fdRead.fd_array[n])) {
-				//如果出错，从动态数组中移除该客户端
-				auto iter = find(g_clients.begin(), g_clients.end(), fdRead.fd_array[n]);
-				if (iter != g_clients.end()) {
-					g_clients.erase(iter);
+		for (int n = (int)g_clients.size()-1; n>=0; n--) {
+			if (FD_ISSET(g_clients[n], &fdRead)) {
+				if (-1 == processor(g_clients[n])) {
+					//如果出错，从动态数组中移除该客户端
+					auto iter = g_clients.begin() + n;
+					if (iter != g_clients.end()) {
+						g_clients.erase(iter);
+					}
 				}
-			}
+			}			
 		}
 
 		//如果客户端没有请求，就会执行到这里，服务器可以进行一些其他的任务
-		printf("空闲时间处理其他业务……\n");
+		//printf("空闲时间处理其他业务……\n");
 	}
 	
 	//如果select任务结束，直接break了
 	//要将服务端socket全部关闭
+#ifdef _WIN32
 	for (int n = (int)g_clients.size()-1; n >= 0; n--) {
 		closesocket(g_clients[n]);
 	}
-
 	//8、关闭套接字 closesocket 服务端
 	closesocket(_sock);
 	//清除windows socket环境
 	WSACleanup();
+#else
+	for (int n = (int)g_clients.size() - 1; n >= 0; n--)
+	{
+		close(g_clients[n]);
+	}
+	// 8 关闭套节字closesocket
+	close(_sock);
+#endif
 	printf("服务器退出！\n");
 	getchar();//实现的功能，暂停
 	return 0;
