@@ -135,7 +135,7 @@ public:
 		return 0;
 	}
 	//响应网络消息 处理请求
-	void OnNetMsg(DataHead* head) {
+	virtual void OnNetMsg(DataHead* head) {
 		switch (head->cmd)
 		{
 		case CMD_LOGIN_RES: {

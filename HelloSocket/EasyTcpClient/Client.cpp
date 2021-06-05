@@ -33,7 +33,8 @@ int main() {
 	EasyTcpClient client2;
 
 	//client.InitSocket();
-	client.Connect("127.0.0.1", 4567);
+	//client.Connect("127.0.0.1", 4567);
+	client.Connect("192.168.84.1", 4567);
 	client2.Connect("127.0.0.1", 4568);
 
 	//启动线程函数
