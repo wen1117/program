@@ -30,27 +30,23 @@ void cmdThread(EasyTcpClient *client) {
 }
 int main() {
 	EasyTcpClient client;
-	EasyTcpClient client2;
-
 	//client.InitSocket();
-	//client.Connect("127.0.0.1", 4567);
-	client.Connect("192.168.84.1", 4567);
-	client2.Connect("127.0.0.1", 4568);
+	client.Connect("127.0.0.1", 4567);
 
 	//启动线程函数
-	std::thread t1(cmdThread, &client);
-	t1.detach();//用来分离cmdThread线程与主线程
-
-	std::thread t2(cmdThread, &client2);
-	t2.detach();//用来分离cmdThread线程与主线程
-
-	while (client.IsRun()||client2.IsRun()) {
+	//std::thread t1(cmdThread, &client);
+	//t1.detach();//用来分离cmdThread线程与主线程
+	
+	Login login;
+	strcpy(login.userName, "rww");
+	strcpy(login.passWord, "rwwmm");
+	
+	while (client.IsRun()) {
 		client.OnRun();
-		client2.OnRun();
+		client.SendData(&login);
 		//printf("空闲时间处理其他业务..\n");
 	}
 	client.Close();	
-	client2.Close();
 	printf("客户端退出，任务结束！\n");
 	getchar();
 	return 0;

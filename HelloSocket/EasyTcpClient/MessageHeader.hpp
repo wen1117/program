@@ -22,6 +22,7 @@ struct Login :public DataHead {
 	}
 	char userName[32];
 	char passWord[32];
+
 };
 struct LoginRes :public DataHead {
 	LoginRes() {
@@ -30,7 +31,7 @@ struct LoginRes :public DataHead {
 		result = 0;
 	}
 	int result;
-
+	char data[1024];
 };
 struct Logout :public DataHead {
 	Logout() {
