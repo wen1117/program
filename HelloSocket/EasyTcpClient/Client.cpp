@@ -1,52 +1,54 @@
 ﻿#include"EasyTcpClient.hpp"
 #include<thread>//标准线程库
 
-
+bool g_bRun = true;
 //用于输入命令
-void cmdThread(EasyTcpClient *client) {
+void cmdThread() {
 	while (true) {
 		char cmdBuf[256] = {};
 		scanf("%s", cmdBuf);
 		if (0 == strcmp(cmdBuf, "exit")) {
-			client->Close();
+			g_bRun = false;
 			printf("退出cmdThread线程\n");
 			break;
-		}
-		else if (0 == strcmp(cmdBuf, "login")) {
-			Login login;
-			strcpy(login.userName, "ren wen");
-			strcpy(login.passWord, "ren wen password");
-			client->SendData(&login);
-		}
-		else if (0 == strcmp(cmdBuf, "logout")) {
-			Logout logout;
-			strcpy(logout.userName, "ren wen");
-			client->SendData(&logout);
 		}
 		else {
 			printf("不支持的命令！\n");
 		}
 	}
 }
+
 int main() {
-	EasyTcpClient client;
-	//client.InitSocket();
-	client.Connect("127.0.0.1", 4567);
+	const int cCount = FD_SETSIZE-1;//windows默认最大连接数 64个set，这里1个服务器，63个客户端
+	EasyTcpClient* client[cCount];
+	for (int i = 0; i< cCount; i++) {
+		client[i] = new EasyTcpClient();
+		client[i]->Connect("127.0.0.1", 4567);
+	}
+	
+	
 
 	//启动线程函数
-	//std::thread t1(cmdThread, &client);
-	//t1.detach();//用来分离cmdThread线程与主线程
+	std::thread t1(cmdThread);
+	t1.detach();//用来分离cmdThread线程与主线程
 	
 	Login login;
 	strcpy(login.userName, "rww");
 	strcpy(login.passWord, "rwwmm");
 	
-	while (client.IsRun()) {
-		client.OnRun();
-		client.SendData(&login);
+
+	while (g_bRun) {
+		for (int i = 0; i < cCount; i++) {
+			client[i]->SendData(&login);
+			client[i]->OnRun();
+		}
+		
+		
 		//printf("空闲时间处理其他业务..\n");
 	}
-	client.Close();	
+	for (int i = 0; i < cCount; i++) {
+		client[i]->Close();
+	}
 	printf("客户端退出，任务结束！\n");
 	getchar();
 	return 0;
