@@ -1,10 +1,5 @@
 #ifndef _MessageHeader_hpp_
 #define _MessageHeader_hpp_
-
-struct DataHead {
-	short dataLength;//数据长度
-	short cmd;//命令
-};
 enum CMD {//枚举
 	CMD_LOGIN,
 	CMD_LOGOUT,
@@ -13,7 +8,14 @@ enum CMD {//枚举
 	CMD_ERROR,
 	CMD_NEW_USER_JION
 };
-
+struct DataHead {
+	DataHead() {
+		dataLength = sizeof(DataHead);
+		cmd = CMD_ERROR;
+	}
+	short dataLength;//数据长度
+	short cmd;//命令
+};
 //DataPackage
 struct Login :public DataHead {
 	Login() {
@@ -22,7 +24,10 @@ struct Login :public DataHead {
 	}
 	char userName[32];
 	char passWord[32];
+	char data[932];
+
 };
+
 struct LoginRes :public DataHead {
 	LoginRes() {
 		dataLength = sizeof(LoginRes);
@@ -30,8 +35,9 @@ struct LoginRes :public DataHead {
 		result = 0;
 	}
 	int result;
-
+	char data[992];
 };
+
 struct Logout :public DataHead {
 	Logout() {
 		dataLength = sizeof(Logout);
