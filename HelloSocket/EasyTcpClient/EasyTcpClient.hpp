@@ -46,7 +46,7 @@ public:
 			printf("错误，建立socket失败！\n");
 		}
 		else {
-			printf("建立<socket=%d>成功！\n", (int)_sock);
+			//printf("建立<socket=%d>成功！\n", (int)_sock);
 		}
 	}
 	//连接服务器
@@ -69,7 +69,7 @@ public:
 			printf("<socket=%d>错误，连接服务器<%s:%d>失败！\n", (int)_sock,ip,port);
 		}
 		else {
-			printf("<socket=%d>连接服务器<%s:%d>成功！\n", (int)_sock, ip, port);
+			//printf("<socket=%d>连接服务器<%s:%d>成功！\n", (int)_sock, ip, port);
 		}
 		return ret;
 	}

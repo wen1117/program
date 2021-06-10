@@ -19,13 +19,18 @@ void cmdThread() {
 }
 
 int main() {
-	const int cCount = FD_SETSIZE-1;//windows默认最大连接数 64个set，这里1个服务器，63个客户端
+	 
+	const int cCount = 1000;//windows默认最大连接数 64个set，这里1个服务器，63个客户端
 	EasyTcpClient* client[cCount];
 	for (int i = 0; i< cCount; i++) {
+		if (!g_bRun) return 0;
 		client[i] = new EasyTcpClient();
-		client[i]->Connect("127.0.0.1", 4567);
 	}
-	
+	for (int i = 0; i < cCount; i++) {
+		if (!g_bRun) return 0;
+		client[i]->Connect("127.0.0.1", 4567);
+		printf("connect=%d\n", i);
+	}
 	
 
 	//启动线程函数
@@ -40,7 +45,7 @@ int main() {
 	while (g_bRun) {
 		for (int i = 0; i < cCount; i++) {
 			client[i]->SendData(&login);
-			client[i]->OnRun();
+			//client[i]->OnRun();
 		}
 		
 		
@@ -50,6 +55,6 @@ int main() {
 		client[i]->Close();
 	}
 	printf("客户端退出，任务结束！\n");
-	getchar();
+
 	return 0;
 }
