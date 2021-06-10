@@ -2,6 +2,7 @@
 #define _EasyTcpServer_hpp_
 
 #ifdef _WIN32
+	#define FD_SETSIZE  1024
 	#define WIN32_LEAN_AND_MEAN
 	#define _WINSOCK_DEPRECATED_NO_WARNINGS
 	#include<windows.h>
@@ -20,6 +21,7 @@
 #include<stdio.h>
 #include<vector>
 #include"MessageHeader.hpp"
+#include"CELLTimestamp.hpp"
 
 //缓冲区最小单元大小
 #ifndef recv_buff_size
@@ -62,9 +64,13 @@ private:
 	SOCKET _sock;
 	//不要直接vector<ClientSocket> ，因为除了new出来的以外变量都存在栈区，栈区空间很小，这样容易爆栈
 	std::vector<ClientSocket*> _clients;
+	CELLTimestamp _tTime;
+	int _recvCount;
+	
 public:
 	EasyTcpServer() {
 		_sock = INVALID_SOCKET;
+		_recvCount = 0;
 	}
 	virtual ~EasyTcpServer()
 	{	
@@ -154,10 +160,10 @@ public:
 			printf("<socket=%d>错误，接收到无效客户端!\n",(int)_sock);
 		}
 		else {
-			printf("<socket=%d>新客户端加入：socket=%d,IP= %s \n", (int)_sock,(int)cSock, inet_ntoa(clientAddr.sin_addr));
+			printf("<socket=%d>新客户端<%d>加入：socket=%d,IP= %s \n", (int)_sock,_clients.size(),(int)cSock, inet_ntoa(clientAddr.sin_addr));
 			//有新客户端加入时，向其他客户端发送消息通知
-			NewUserJoin nuj;
-			SendDataToALL(&nuj);
+			//NewUserJoin nuj;
+			//SendDataToALL(&nuj);
 			//将新加入的客户端存起来 利用动态数组
 			_clients.push_back(new ClientSocket(cSock));
 		}
@@ -268,6 +274,13 @@ public:
 	}
 	// 响应网络消息
 	virtual void OnNetMsg(SOCKET cSock , DataHead* head) {
+		_recvCount++;
+		auto t1=_tTime.getElapsedSecond();
+		if (t1 >= 1.0) {
+			printf("<time=%lf>,<socket=%d>,<clients=%d>,<recvCount=%d>\n",t1, (int)_sock,_clients.size(), _recvCount);
+			_recvCount = 0;
+			_tTime.update();
+		}
 		//6、处理请求		
 		switch (head->cmd)
 		{
@@ -275,18 +288,18 @@ public:
 			Login* login = (Login*)head;
 			//printf("收到客户端<socket=%d>请求：CMD_LOGIN  数据长度：%d  uesrname：%s password：%s\n",(int) cSock, login->dataLength, login->userName, login->passWord);
 			//忽略判断用户名密码是否正确的过程
-			LoginRes ret;
+			//LoginRes ret;
 			//返回数据 发送数据包
-			SendData(cSock, &ret);
+			//SendData(cSock, &ret);
 			break;
 		}
 		case CMD_LOGOUT: {
 			Logout* logout = (Logout*)head;
 			//printf("收到客户端<socket=%d>请求：CMD_LOGOUT  数据长度：%d  uesrname：%s \n",(int) cSock, logout->dataLength, logout->userName);
 			//忽略判断用户名密码是否正确的过程
-			LogoutRes ret;
+			//LogoutRes ret;
 			//返回数据 发送数据包
-			SendData(cSock, &ret);
+			//SendData(cSock, &ret);
 			break;
 		}
 		default: {
